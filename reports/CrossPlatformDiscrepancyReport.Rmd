@@ -1,0 +1,142 @@
+---
+title: "Cross-System Discrepancy Report"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    theme: paper
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+      side: left
+    toc_depth: 3
+    number_sections: false
+  word_document:
+    toc: true
+    toc_depth: '3'
+---
+
+```{css, echo = FALSE}
+h3 {
+  text-align: center;
+  font-weight: bold;
+}
+```
+
+```{r setup, echo = FALSE, warning = FALSE}
+opts_chunk$set(echo = TRUE)
+```
+
+Clinical personnel capture visit details using electronic data capture (EDC) systems. Biospecimen collection may occur during visits and often include acquisition of whole blood or biopsies. Sample processing and aliquot or other derivatives are often tracked using laboratory inventory management systems (LIMS). Clinical personnel may enter biospecimen collection details in LIMS separately, which requires cross-validation to ensure what was entered in LIMS matches what was recorded in EDC system(s).
+
+<h3 style="text-align:center; font-weight:bold;">Visit Summaries</h3>
+<br>
+
+Participant and visit summary information for a particular case report form (CRF) can be included in these reports. Simply customize the code blocks to include report-relevant information. Examples are provided.
+
+<h4 style="text-align:center;">Visit Counts by Participant</h4>
+
+See how many visits have been completed for all participants, including those who failed screening.
+
+Lengthy table outputs can be converted to an optional dropdown menu.
+
+```{r CountSummary, echo = FALSE}
+# enable toggle dropdown output
+asis_output("
+<details>
+<summary>Show Table</summary>
+")
+
+edc %>%
+  group_by(pid) %>%
+  summarise(
+    `Visit Count` = n()
+    #`Percent` = round(100 * n() / nrow(edc), 1)
+  ) %>%
+  rename(
+    `Participant ID` = pid
+  ) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+# enable toggle dropdown output
+asis_output("</details>")
+```
+
+<h4 style="text-align:center;">Cumulative Visit Counts</h4>
+
+```{r EventSummary, echo = FALSE}
+edc %>%
+  group_by(visit_type) %>%
+  summarise(
+    Count = n(),
+    Percent = round(100 * n() / nrow(edc), 1)
+  ) %>%
+  rename(Visit = visit_type) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+<h4 style="text-align:center;">Baseline Procedure Completion</h4>
+
+```{r BaselineProcedures, echo = FALSE}
+edc %>%
+  filter(visit_type == 1) %>%
+  summarise(
+    Complete = sum(baseline_procedures_inst_complete == 1),
+    Incomplete = sum(baseline_procedures_inst_complete == 0)
+  ) %>%
+  kable(align = "c") %>%
+  kable_styling()
+```
+
+<h3 style="text-align:center; font-weight:bold;">Cross-Platform Discrepancies</h3>
+<br>
+<h4 style="text-align:center;">Screening Visits</h4>
+
+```{r ScreeningDiscrepancies, echo = FALSE}
+screening_discrepancies %>%
+  rename(
+    `Participant ID` = pid,
+    `Visit` = visit_type.edc,
+    `EDC Screening Date` = screening_date.edc,
+    `LIMS Screening Date` = screening_date.lims,
+    `Status` = screening_status
+  ) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+<h4 style="text-align:center;">Baseline Visits</h4>
+
+```{r VisitDiscrepancies, echo = FALSE}
+visit_discrepancies %>%
+  rename(
+    `Participant ID` = pid,
+    `Visit` = visit_type.edc,
+    `EDC Visit Date` = visit_date.edc,
+    `LIMS Visit Date` = visit_date.lims,
+    `Status` = visit_status
+  ) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+<h4 style="text-align:center;">Biobanking</h4>
+
+```{r BiobankingDiscrepancies, echo = FALSE}
+biobanking_discrepancies %>%
+  rename(
+    `Participant ID` = pid,
+    `Visit` = visit_type,
+    `EDC Whole Blood Collected` = biobank_tubes_collected,
+    `EDC Skin Biopsy Collected` = skinbiopsy_collected,
+    `LIMS Whole Blood Recorded` = WB,
+    `LIMS Skin Biopsy Recorded` = SB,
+    `Whole Blood Status` = wb_status,
+    `Skin Biopsy Status` = sb_status
+  ) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```

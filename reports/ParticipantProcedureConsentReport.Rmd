@@ -1,0 +1,179 @@
+---
+title: "Procedure Consent Status Discrepancy Report"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    theme: paper
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+      side: left
+    toc_depth: 3
+    number_sections: false
+  word_document:
+    toc: true
+    toc_depth: '3'
+---
+
+```{css, echo = FALSE}
+h3 {
+  text-align: center;
+  font-weight: bold;
+}
+```
+
+```{r setup, echo = FALSE, warning = FALSE}
+opts_chunk$set(echo = TRUE)
+```
+
+<h3 style="text-align:center; font-weight:bold;">Visit Summaries</h3>
+<br>
+
+Participant and visit summary information for a particular case report form (CRF) can be included in these reports. Simply customize the code blocks to include report-relevant information. Examples are provided.
+
+<h4 style="text-align:center;">Visit Counts by Participant</h4>
+
+See how many visits have been completed for all participants, including those who failed screening.
+
+Lengthy table outputs can be converted to an optional dropdown menu.
+
+```{r CountSummary, echo = FALSE}
+# enable toggle dropdown output
+asis_output("
+<details>
+<summary>Show Table</summary>
+")
+
+edc %>%
+  group_by(pid) %>%
+  summarise(
+    `Visit Count` = n()
+    #`Percent` = round(100 * n() / nrow(edc), 1)
+  ) %>%
+  rename(
+    `Participant ID` = pid
+  ) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+# enable toggle dropdown output
+asis_output("</details>")
+```
+
+<h4 style="text-align:center;">Cumulative Visit Counts</h4>
+
+```{r EventSummary, echo = FALSE}
+edc %>%
+  group_by(visit_type) %>%
+  summarise(
+    Count = n(),
+    Percent = round(100 * n() / nrow(edc), 1)
+  ) %>%
+  rename(Visit = visit_type) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+<h4 style="text-align:center;">Baseline Procedure Completion</h4>
+
+```{r BaselineProcedures, echo = FALSE}
+edc %>%
+  summarise(
+    Complete = sum(baseline_procedures_inst_complete == 1, na.rm = TRUE),
+    Incomplete = sum(baseline_procedures_inst_complete == 0, na.rm = TRUE)
+  ) %>%
+  kable(align = "c") %>%
+  kable_styling()
+```
+
+<h3 style="text-align:center; font-weight:bold;">Participant Consent Status</h3>
+
+Participants who consented to undergoing specific procedures may later withdraw consent and refuse to undergo a procedure. Alternatively, participating in the procedure may pose risk to the participant be it physically or mentally in a manner not understood at the time of screening.
+
+```{r ConsentCounts, echo = FALSE}
+consents %>%
+  summarise(
+    `Declined Blood Draw` = sum(!is.na(Labs_DeclineReason)),
+    `Declined Skin Biopsy Procedures` = sum(!is.na(SkinBiopsy_DeclineReason)),
+    `Declined Ultrasound Procedures` = sum(!is.na(Ultrasound_DeclineReason))
+  ) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+<h4 style="text-align:center;">Incomplete Skin Biopsy</h4>
+
+The following consented participant(s) did not undergo a skin biopsy procedure.
+
+```{r SkinBiopsy, echo = FALSE}
+consents %>%
+  filter(!is.na(SkinBiopsy_DeclineReason)) %>%
+  rename(
+    `Participant ID` = pid,
+    `Visit Type` = visit_type,
+    `Baseline Procedure Visit Date` = baseline_procedures_date,
+    `Reason for Incomplete Skin Biopsy` = SkinBiopsy_DeclineReason
+  ) %>%
+  select(-Ultrasound_DeclineReason, -Labs_DeclineReason) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+<h4 style="text-align:center;">Incomplete Ultrasound</h4>
+
+The following consented participant(s) did not have an ultrasound.
+
+```{r Ultrasound, echo = FALSE}
+consents %>%
+  filter(!is.na(Ultrasound_DeclineReason)) %>%
+  rename(
+    `Participant ID` = pid,
+    `Visit Type` = visit_type,
+    `Baseline Procedure Visit Date` = baseline_procedures_date,
+    `Reason for Incomplete Ultrasound` = Ultrasound_DeclineReason
+  ) %>%
+  select(-SkinBiopsy_DeclineReason, -Labs_DeclineReason) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+<h4 style="text-align:center;">Incomplete Lab Draw</h4>
+
+The following consented participant(s) did not have labs done.
+
+```{r Labs, echo = FALSE}
+consents %>%
+  filter(!is.na(Labs_DeclineReason)) %>%
+  rename(
+    `Participant ID` = pid,
+    `Visit Type` = visit_type,
+    `Baseline Procedure Visit Date` = baseline_procedures_date,
+    `Reason for Incomplete Labs` = Labs_DeclineReason
+  ) %>%
+  select(-SkinBiopsy_DeclineReason, -Ultrasound_DeclineReason) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+<h4 style="text-align:center;">Refused All Procedures</h4>
+
+The following consented participant(s) refused all baseline procedures without providing a medical reason.
+
+```{r Refused, echo = FALSE}
+consents %>%
+  filter(Ultrasound_DeclineReason == "Refused",
+         SkinBiopsy_DeclineReason == "Refused",
+         Labs_DeclineReason == "Refused") %>%
+  rename(
+    `Participant ID` = pid,
+    `Visit Type` = visit_type,
+    `Baseline Procedure Visit Date` = baseline_procedures_date,
+    `Reason for Incomplete Labs` = Labs_DeclineReason,
+    `Reason for Incomplete Ultrasound` = Ultrasound_DeclineReason,
+    `Reason for Incomplete Skin Biopsy` = SkinBiopsy_DeclineReason
+  ) %>%
+  kable(align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
